@@ -1,22 +1,48 @@
 from pathlib import Path
-from typing import Sequence
+from typing import Sequence, Iterable
 
+import matplotlib.pyplot as plt
+import numpy as np
 import openpyxl
 import pandas as pd
 from openpyxl.cell import Cell
 from openpyxl.styles import Font
 from openpyxl.worksheet.worksheet import Worksheet
 
+from config import headlines_known_not_to_contain_table
+
 Span = tuple[int, int]
 
 TableSpan = tuple[Span, Span]
 
+PATH_PLOTTING = Path("data/plots/")
+
+
+class WorkbookReader:
+    def __init__(self, path: Path, worksheet_names: Iterable[str]):
+        self.workbook = openpyxl.load_workbook(path)
+
+        self.worksheet_readers: dict[str, WorksheetReader] = {
+            worksheet_name: WorksheetReader(self.workbook[worksheet_name]) for worksheet_name in worksheet_names
+        }
+        print(f'''Found sheets: "{'", "'.join(self.worksheet_readers.keys())}"''')
+
+        self.plot_data_frames()
+
+    def plot_data_frames(self):
+        for worksheet_name, worksheet_reader in self.worksheet_readers.items():
+            path_plotting = PATH_PLOTTING / worksheet_name
+            path_plotting.mkdir(exist_ok=True)
+
+            for data_frame_name, df in worksheet_reader.data_frames.items():
+                df.plot()
+                output_file_name = data_frame_name.replace("/", "")  # Cannot contain slash
+                plt.savefig(path_plotting / output_file_name)
+
 
 class WorksheetReader:
-    def __init__(self, worksheet_name: str, path: Path):
-        wb = openpyxl.load_workbook(path)
-        self.worksheet: Worksheet = wb[worksheet_name]
-        self.first_column: Sequence[Cell] = next(self.worksheet.iter_cols())
+    def __init__(self, worksheet: Worksheet):
+        self.worksheet = worksheet
         self.data_frames = self.get_data_frames()
 
     @staticmethod
@@ -25,7 +51,8 @@ class WorksheetReader:
         return font.underline == "single" and cell.hyperlink is None
 
     def get_table_headlines(self) -> list[Cell]:
-        return [cell for cell in self.first_column if self.is_headline_cell(cell)]
+        first_column: Sequence[Cell] = next(self.worksheet.iter_cols())
+        return [cell for cell in first_column if self.is_headline_cell(cell)]
 
     def get_table_last_col(self, table_upper_left_cell: Cell) -> int:
         row = table_upper_left_cell.row
