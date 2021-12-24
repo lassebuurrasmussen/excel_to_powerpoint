@@ -48,7 +48,11 @@ class WorksheetReader:
     @staticmethod
     def is_headline_cell(cell: Cell):
         font: Font = cell.font
-        return font.underline == "single" and cell.hyperlink is None
+        return (
+            font.underline == "single"
+            and cell.hyperlink is None
+            and cell.value not in headlines_known_not_to_contain_table
+        )
 
     def get_table_headlines(self) -> list[Cell]:
         first_column: Sequence[Cell] = next(self.worksheet.iter_cols())
