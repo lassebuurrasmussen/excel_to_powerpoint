@@ -94,8 +94,11 @@ class WorksheetReader:
         row_span, col_span = table_span
 
         data = [
-            [self.worksheet.cell(row=row, column=col).value for col in range(col_span[0], col_span[1])]
-            for row in range(row_span[0], row_span[1])
+            [
+                cell if (cell := self.worksheet.cell(row=row, column=col).value) != "na" else np.nan
+                for col in range(col_span[0], col_span[1] + 1)
+            ]
+            for row in range(row_span[0], row_span[1] + 1)
         ]
         header = data.pop(0)
 
