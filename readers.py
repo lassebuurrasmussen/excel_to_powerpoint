@@ -91,6 +91,13 @@ class WorksheetReader:
         return self._get_table_span(upper_left_cell=table_upper_left_cell, lower_right_cell=table_lower_right_cell)
 
     def make_data_frame(self, table_span: TableSpan) -> pd.DataFrame:
+        # TODO: Sometimes contain date and time of day.
+        #  E.g.:
+        #  ```
+        #    DATE     TOD
+        #  191205   00:05
+        #  ```
+        #  Should be combined to datetime and made index
         row_span, col_span = table_span
 
         data = [
