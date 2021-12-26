@@ -90,14 +90,26 @@ class WorksheetReader:
 
         return self._get_table_span(upper_left_cell=table_upper_left_cell, lower_right_cell=table_lower_right_cell)
 
+    @staticmethod
+    def preprocess_datetime_of_df(df: pd.DataFrame) -> pd.DataFrame:
+        if "DATE" not in df.columns or "TOD" not in df.columns:
+            return df
+
+        def parse_datetime(series):
+            for datetime_format in ["%y%m%d %H:%M", "%d/%m/%Y %H:%M", None]:
+                try:
+                    return pd.to_datetime(series, format=datetime_format)
+                except ValueError:
+                    continue
+
+        return (
+            df.assign(datetime=df["DATE"].astype(str) + " " + df["TOD"].astype(str))
+            .assign(datetime=lambda _df: parse_datetime(_df["datetime"]))
+            .drop(columns=["DATE", "TOD"])
+            .set_index("datetime")
+        )
+
     def make_data_frame(self, table_span: TableSpan) -> pd.DataFrame:
-        # TODO: Sometimes contain date and time of day.
-        #  E.g.:
-        #  ```
-        #    DATE     TOD
-        #  191205   00:05
-        #  ```
-        #  Should be combined to datetime and made index
         row_span, col_span = table_span
 
         data = [
@@ -109,7 +121,8 @@ class WorksheetReader:
         ]
         header = data.pop(0)
 
-        return pd.DataFrame(data, columns=header)
+        df = pd.DataFrame(data, columns=header)
+        return self.preprocess_datetime_of_df(df)
 
     def get_data_frame_from_headline(self, headline_cell: Cell) -> pd.DataFrame:
         call_below_headline_empty = not self.worksheet.cell(headline_cell.row + 1, headline_cell.column).value
