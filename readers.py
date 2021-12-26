@@ -37,6 +37,8 @@ class WorkbookReader:
             self.plot_data_frames()
 
     def plot_data_frames(self):
+        # TODO: There's not a 1:1 relationship between tables and plots. So I need to implement the logic of each
+        #  spefific plot.
         for worksheet_name, worksheet_reader in self.worksheet_readers.items():
             logger.info(f'Plotting "{worksheet_name}"')
             path_plotting = PATH_PLOTTING / worksheet_name
