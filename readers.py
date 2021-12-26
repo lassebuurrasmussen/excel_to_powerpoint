@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 from typing import Sequence, Iterable
 
@@ -9,6 +10,7 @@ from openpyxl.cell import Cell
 from openpyxl.styles import Font
 from openpyxl.worksheet.worksheet import Worksheet
 
+from _logging import get_logger
 from config import headlines_known_not_to_contain_table
 
 Span = tuple[int, int]
@@ -17,20 +19,26 @@ TableSpan = tuple[Span, Span]
 
 PATH_PLOTTING = Path("data/plots/")
 
+logger = get_logger(level=logging.INFO)
+
 
 class WorkbookReader:
-    def __init__(self, path: Path, worksheet_names: Iterable[str]):
+    def __init__(self, path: Path, worksheet_names: Iterable[str], plot_data_frames=False):
         self.workbook = openpyxl.load_workbook(path)
 
         self.worksheet_readers: dict[str, WorksheetReader] = {
             worksheet_name: WorksheetReader(self.workbook[worksheet_name]) for worksheet_name in worksheet_names
         }
-        print(f'''Found sheets: "{'", "'.join(self.worksheet_readers.keys())}"''')
+        logger.info(f'''Found sheets: "{'", "'.join(self.worksheet_readers.keys())}"''')
+        self.log_data_frames()
 
-        self.plot_data_frames()
+        if plot_data_frames:
+            logger.info("Plotting data frames...")
+            self.plot_data_frames()
 
     def plot_data_frames(self):
         for worksheet_name, worksheet_reader in self.worksheet_readers.items():
+            logger.info(f'Plotting "{worksheet_name}"')
             path_plotting = PATH_PLOTTING / worksheet_name
             path_plotting.mkdir(exist_ok=True)
 
@@ -38,6 +46,13 @@ class WorkbookReader:
                 df.plot()
                 output_file_name = data_frame_name.replace("/", "")  # Cannot contain slash
                 plt.savefig(path_plotting / output_file_name)
+
+    def log_data_frames(self):
+        for worksheet_name, worksheet_reader in self.worksheet_readers.items():
+            logger.debug(f'"{worksheet_name}" DataFrames:')
+            for data_frame_name, df in worksheet_reader.data_frames.items():
+                logger.debug(f'"{data_frame_name}":')
+                logger.debug(df)
 
 
 class WorksheetReader:
